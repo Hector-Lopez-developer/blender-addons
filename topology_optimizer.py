@@ -1,0 +1,66 @@
+bl_info = {
+    "name": "Topology Optimizer",
+    "blender": (2, 82, 0),
+    "category": "Object",
+}
+
+import bpy
+
+class TopologyOptimizerPanel(bpy.types.Panel):
+    """Panel para optimizar la topología"""
+    bl_label = "Optimizador de Topología"
+    bl_idname = "OBJECT_PT_topology_optimizer"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'Topology'
+
+    def draw(self, context):
+        layout = self.layout
+        props = context.scene.topology_props
+
+        layout.prop(props, "decimate_ratio")
+        layout.operator("object.optimize_topology")
+
+class TopologyProperties(bpy.types.PropertyGroup):
+    decimate_ratio: bpy.props.FloatProperty(
+        name="Ratio de Reducción",
+        description="Proporción para reducir los polígonos",
+        default=0.5,
+        min=0.0,
+        max=1.0
+    )
+
+class OptimizeTopologyOperator(bpy.types.Operator):
+    """Operador para optimizar la topología del objeto seleccionado"""
+    bl_idname = "object.optimize_topology"
+    bl_label = "Optimizar Topología"
+
+    def execute(self, context):
+        obj = context.active_object
+        if obj is not None and obj.type == 'MESH':
+            # Aplicar el modificador de decimación
+            decimate_modifier = obj.modifiers.new(name="Decimate", type='DECIMATE')
+            decimate_modifier.ratio = context.scene.topology_props.decimate_ratio
+            
+            # Aplicar el modificador
+            bpy.ops.object.modifier_apply(modifier=decimate_modifier.name)
+
+            return {'FINISHED'}
+        else:
+            self.report({'WARNING'}, "Selecciona un objeto de tipo malla.")
+            return {'CANCELLED'}
+
+def register():
+    bpy.utils.register_class(TopologyOptimizerPanel)
+    bpy.utils.register_class(TopologyProperties)
+    bpy.utils.register_class(OptimizeTopologyOperator)
+    bpy.types.Scene.topology_props = bpy.props.PointerProperty(type=TopologyProperties)
+
+def unregister():
+    bpy.utils.unregister_class(TopologyOptimizerPanel)
+    bpy.utils.unregister_class(TopologyProperties)
+    bpy.utils.unregister_class(OptimizeTopologyOperator)
+    del bpy.types.Scene.topology_props
+
+if __name__ == "__main__":
+    register()
